@@ -4,99 +4,419 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MLH Shortener</title>
+    <title>TrimURL | Command Center</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Base Configuration */
+        body {
+            overflow: hidden;
+            /* Prevent body scroll, use inner scroll */
+            background-color: #050505;
+            color: #e5e7eb;
+        }
+
+        /* --- Custom Scrollbar --- */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #0a0a0a;
+            border-left: 1px solid #27272a;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #581c87;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #9333ea;
+        }
+
+        /* --- Subtle Cursor Halo --- */
+        .cursor-halo-lagging {
+            position: fixed;
+            pointer-events: none;
+            width: 300px;
+            height: 300px;
+            border-radius: 50%;
+            /* Normal smooth circle */
+            transform: translate(-50%, -50%);
+            background: radial-gradient(circle, rgba(168, 85, 247, 0.08) 0%, transparent 60%);
+            z-index: 9999;
+            transition: opacity 0.3s ease;
+        }
+
+        /* --- Abstract Background Patterns --- */
+        .abstract-grid {
+            background-size: 40px 40px;
+            background-image:
+                linear-gradient(to right, rgba(168, 85, 247, 0.05) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(168, 85, 247, 0.05) 1px, transparent 1px);
+        }
+
+        .scanline {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to bottom, transparent 50%, rgba(0, 0, 0, 0.2) 51%);
+            background-size: 100% 4px;
+            pointer-events: none;
+            z-index: 50;
+            opacity: 0.3;
+        }
+
+        /* --- UI Component Styling --- */
+        .sharp-panel {
+            background: rgba(10, 10, 10, 0.9);
+            border: 1px solid #3f3f46;
+            backdrop-filter: blur(10px);
+        }
+
+        .neon-border-focus:focus-within {
+            border-color: #a855f7;
+            box-shadow: inset 0 0 10px rgba(168, 85, 247, 0.2), 0 0 10px rgba(168, 85, 247, 0.2);
+        }
+
+        .terminal-text {
+            font-family: 'Courier New', Courier, monospace;
+            text-shadow: 0 0 5px rgba(168, 85, 247, 0.5);
+        }
+
+        /* Blinking cursor for terminal */
+        .blink {
+            animation: blinker 1s linear infinite;
+        }
+
+        @keyframes blinker {
+            50% {
+                opacity: 0;
+            }
+        }
+    </style>
 </head>
 
-<body class="bg-gray-50 min-h-screen flex items-center justify-center font-sans">
+<body class="flex flex-col h-screen w-full antialiased font-sans selection:bg-purple-900 selection:text-purple-100">
 
-    <div class="max-w-lg w-full bg-white rounded-xl shadow-lg p-8">
-        <h1 class="text-3xl font-bold text-center text-blue-600 mb-2">TrimURL</h1>
-        <p class="text-center text-gray-500 mb-8">Paste your long link below to shorten it.</p>
+    <div class="cursor-halo-lagging" id="cursor-halo"></div>
+    <div class="scanline"></div>
 
-        <form id="shorten-form" class="space-y-4">
-            <div>
-                <input type="url" id="original-url" required placeholder="https://super-long-url.com/..."
-                    class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:outline-none transition">
-            </div>
-            <button type="submit"
-                class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition duration-200">
-                Shorten URL
-            </button>
-        </form>
+    <main class="flex-1 flex flex-col relative z-30 h-full overflow-y-auto">
+        <div class="absolute inset-0 abstract-grid pointer-events-none opacity-20 z-0"></div>
 
-        <div id="result-area" class="mt-8 hidden">
-            <div class="p-4 bg-green-50 border border-green-200 rounded-lg text-center">
-                <p class="text-sm text-green-800 mb-2">Success! Here is your short link:</p>
-                <div class="flex items-center justify-center space-x-2">
-                    <a id="short-link" href="#" target="_blank"
-                        class="text-lg font-bold text-blue-600 hover:underline"></a>
-                    <button id="copy-btn"
-                        class="p-2 bg-gray-200 hover:bg-gray-300 rounded text-sm font-medium transition">
-                        Copy
-                    </button>
+        <header
+            class="h-16 sharp-panel border-b border-gray-800 flex items-center justify-between px-8 sticky top-0 z-20">
+            <div class="flex items-center space-x-6">
+                <div class="flex items-center space-x-3">
+                    <div class="w-6 h-6 bg-purple-600 shadow-[0_0_10px_#a855f7] flex items-center justify-center">
+                        <svg class="w-4 h-4 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="square" stroke-linejoin="miter" stroke-width="2"
+                                d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1">
+                            </path>
+                        </svg>
+                    </div>
+                    <h1 class="text-lg font-bold text-gray-100 tracking-widest uppercase">Trim<span
+                            class="text-purple-500">URL</span></h1>
+                </div>
+                <div class="text-xs text-gray-500 font-mono hidden md:block">
+                    <span class="text-purple-500">ROOT</span> / WORKSPACE / GENERATE
                 </div>
             </div>
-        </div>
 
-        <div id="error-area" class="mt-4 hidden text-center text-red-600 text-sm"></div>
-    </div>
+            <div class="flex items-center space-x-4">
+                <div class="flex items-center space-x-2 border border-gray-700 bg-black px-3 py-1">
+                    <div class="w-2 h-2 bg-green-500 rounded-full shadow-[0_0_8px_#22c55e]"></div>
+                    <span class="text-xs text-gray-400 font-mono uppercase tracking-widest">Active DB Conn: <span
+                            class="text-gray-100 font-bold">3</span>/100</span>
+                </div>
+                <span
+                    class="text-xs border border-gray-700 bg-gray-900 px-3 py-1 text-gray-400 font-mono">v2.4.1_BUILD</span>
+            </div>
+        </header>
+
+        <div class="p-8 z-10 space-y-8 flex-1 max-w-7xl mx-auto w-full">
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+                <div class="col-span-2 sharp-panel p-8 relative overflow-hidden group">
+                    <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition">
+                        <svg class="w-32 h-32 text-purple-500" fill="currentColor" viewBox="0 0 24 24">
+                            <path
+                                d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1">
+                            </path>
+                        </svg>
+                    </div>
+
+                    <h2 class="text-xl font-bold text-gray-100 tracking-widest uppercase mb-6 flex items-center">
+                        <span class="w-2 h-6 bg-purple-500 mr-3 shadow-[0_0_10px_#a855f7]"></span>
+                        Generate Payload
+                    </h2>
+
+                    <form id="shorten-form" class="space-y-6 relative z-10">
+                        <div class="grid grid-cols-2 gap-6">
+                            <div class="neon-border-focus border border-gray-700 bg-black p-4 transition duration-300">
+                                <label
+                                    class="block text-[10px] text-purple-400 font-mono mb-2 uppercase">TARGET_USER_ID</label>
+                                <select id="user-id"
+                                    class="w-full bg-transparent text-gray-200 font-mono text-sm focus:outline-none appearance-none">
+                                    <option value="1" class="bg-gray-900">ID:001 [calmorbit37]</option>
+                                    <option value="2" class="bg-gray-900">ID:002 [proudkernel15]</option>
+                                    <option value="3" class="bg-gray-900">ID:003 [jadevalley63]</option>
+                                </select>
+                            </div>
+
+                            <div class="neon-border-focus border border-gray-700 bg-black p-4 transition duration-300">
+                                <label class="block text-[10px] text-purple-400 font-mono mb-2 uppercase">IDENTIFIER_TAG
+                                    (Title)</label>
+                                <input type="text" id="link-title" placeholder="NULL"
+                                    class="w-full bg-transparent text-gray-200 font-mono text-sm placeholder-gray-700 focus:outline-none">
+                            </div>
+                        </div>
+
+                        <div class="neon-border-focus border border-gray-700 bg-black p-4 transition duration-300">
+                            <label class="block text-[10px] text-purple-400 font-mono mb-2 uppercase">ORIGIN_URI
+                                (Required) *</label>
+                            <input type="url" id="original-url" required placeholder="https://..."
+                                class="w-full bg-transparent text-purple-300 font-mono text-lg placeholder-gray-800 focus:outline-none">
+                        </div>
+
+                        <div class="flex items-end space-x-4">
+                            <button type="submit" id="submit-btn"
+                                class="flex-1 bg-purple-600 hover:bg-purple-500 text-black font-bold tracking-widest uppercase py-4 border border-purple-400 transition duration-200 active:scale-[0.98] shadow-[0_0_15px_rgba(168,85,247,0.4)] hover:shadow-[0_0_25px_rgba(168,85,247,0.8)]">
+                                Execute Build
+                            </button>
+                        </div>
+                    </form>
+
+                    <div id="result-area"
+                        class="mt-6 hidden border border-green-500/50 bg-green-900/10 p-4 relative z-10">
+                        <p class="text-xs text-green-400 font-mono mb-2">> PAYLOAD_GENERATED_SUCCESSFULLY</p>
+                        <div class="flex items-center justify-between bg-black border border-gray-800 p-3">
+                            <a id="short-link" href="#" target="_blank"
+                                class="text-lg font-mono text-green-400 hover:text-green-300 hover:underline truncate"></a>
+                            <button id="main-copy-btn"
+                                class="px-4 py-2 bg-gray-800 hover:bg-gray-700 border border-gray-600 text-gray-300 text-xs font-mono transition active:scale-95 uppercase tracking-widest">
+                                Copy
+                            </button>
+                        </div>
+                        <div class="mt-3 text-right">
+                            <a id="stats-link" href="#" target="_blank"
+                                class="text-[10px] text-purple-400 hover:text-purple-300 font-mono">>
+                                INIT_ANALYTICS_VIEW</a>
+                        </div>
+                    </div>
+
+                    <div id="error-area" class="mt-6 hidden border border-red-500/50 bg-red-900/10 p-4 relative z-10">
+                        <p class="text-xs text-red-400 font-mono mb-1">> FATAL_ERROR</p>
+                        <p id="error-text" class="text-sm text-gray-300 font-mono"></p>
+                    </div>
+                </div>
+
+                <div class="col-span-1 sharp-panel border border-gray-700 flex flex-col h-full min-h-[400px]">
+                    <div class="bg-black border-b border-gray-800 p-3 flex items-center justify-between">
+                        <span class="text-[10px] text-gray-500 font-mono uppercase tracking-widest">System_Log</span>
+                        <div class="flex space-x-2">
+                            <div class="w-2 h-2 bg-gray-700"></div>
+                            <div class="w-2 h-2 bg-gray-700"></div>
+                            <div class="w-2 h-2 bg-purple-500 shadow-[0_0_5px_#a855f7]"></div>
+                        </div>
+                    </div>
+                    <div class="p-4 bg-[#0a0a0a] flex-1 overflow-y-auto" id="terminal-output">
+                        <p class="terminal-text text-xs text-gray-500 mb-1">> Initializing core systems...</p>
+                        <p class="terminal-text text-xs text-gray-500 mb-1">> Establishing DB connection: OK</p>
+                        <p class="terminal-text text-xs text-purple-400 mb-1">> Ready for input <span
+                                class="blink">_</span></p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sharp-panel border border-gray-800">
+                <div class="p-5 border-b border-gray-800 flex justify-between items-center bg-black/50">
+                    <h3 class="text-sm font-semibold text-gray-300 tracking-widest uppercase flex items-center">
+                        <svg class="w-4 h-4 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="square" stroke-linejoin="miter" stroke-width="2"
+                                d="M4 6h16M4 10h16M4 14h16M4 18h16"></path>
+                        </svg>
+                        Local Session Buffer
+                    </h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left font-mono text-sm">
+                        <thead
+                            class="bg-gray-900 border-b border-gray-800 text-gray-500 text-[10px] uppercase tracking-wider">
+                            <tr>
+                                <th class="p-4 font-normal">Hash Code</th>
+                                <th class="p-4 font-normal">Target_URI</th>
+                                <th class="p-4 font-normal">Identifier</th>
+                                <th class="p-4 font-normal text-center">Status</th>
+                                <th class="p-4 font-normal text-right">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recent-links-body" class="text-gray-400">
+                            <tr id="empty-table-row">
+                                <td colspan="5" class="p-8 text-center text-gray-600 text-xs italic">Buffer empty.
+                                    Execute a build payload to populate.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
     <script>
+        /* --- CUSTOM CURSOR LOGIC --- */
+        const halo = document.getElementById('cursor-halo');
+
+        document.addEventListener('mousemove', (e) => {
+            // Lagging halo effect
+            setTimeout(() => {
+                halo.style.left = `${e.clientX}px`;
+                halo.style.top = `${e.clientY}px`;
+            }, 60);
+        });
+
+        // Dim halo when leaving window
+        document.addEventListener('mouseleave', () => halo.style.opacity = '0');
+        document.addEventListener('mouseenter', () => halo.style.opacity = '1');
+
+        /* --- TERMINAL LOGIC --- */
+        const terminal = document.getElementById('terminal-output');
+        function logToTerminal(msg, type = 'info') {
+            const p = document.createElement('p');
+            p.className = `terminal-text text-xs mb-1 ${type === 'error' ? 'text-red-400' : (type === 'success' ? 'text-green-400' : 'text-gray-400')}`;
+            p.innerHTML = `> ${msg}`;
+
+            // Remove blinker from previous last line if exists
+            const prevBlink = terminal.querySelector('.blink');
+            if (prevBlink) prevBlink.remove();
+
+            p.innerHTML += ` <span class="blink">_</span>`;
+            terminal.appendChild(p);
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+
+        /* --- GLOBAL ROW COPY LOGIC --- */
+        window.copyRowHash = function (btn, hashUrl) {
+            navigator.clipboard.writeText(hashUrl).then(() => {
+                const originalText = btn.innerText;
+                btn.innerText = 'COPIED';
+                btn.classList.add('text-green-400', 'border-green-500');
+                btn.classList.remove('text-purple-400', 'border-gray-600');
+
+                setTimeout(() => {
+                    btn.innerText = originalText;
+                    btn.classList.remove('text-green-400', 'border-green-500');
+                    btn.classList.add('text-purple-400', 'border-gray-600');
+                }, 2000);
+            });
+        };
+
+        /* --- APP LOGIC --- */
         const form = document.getElementById('shorten-form');
-        const input = document.getElementById('original-url');
-        const resultArea = document.getElementById('result-area');
-        const shortLink = document.getElementById('short-link');
-        const copyBtn = document.getElementById('copy-btn');
-        const errorArea = document.getElementById('error-area');
+        const submitBtn = document.getElementById('submit-btn');
+        const recentBody = document.getElementById('recent-links-body');
+        const emptyRow = document.getElementById('empty-table-row');
+        let hasData = false;
 
         form.addEventListener('submit', async (e) => {
-            e.preventDefault(); // Prevent page reload
+            e.preventDefault();
 
-            // Reset UI states
-            resultArea.classList.add('hidden');
-            errorArea.classList.add('hidden');
+            document.getElementById('result-area').classList.add('hidden');
+            document.getElementById('error-area').classList.add('hidden');
 
-            const urlToShorten = input.value;
+            const originalBtnText = submitBtn.innerText;
+            submitBtn.innerText = 'EXECUTING...';
+            submitBtn.disabled = true;
+
+            const urlInput = document.getElementById('original-url').value;
+            const titleInput = document.getElementById('link-title').value || "Untitled";
+            const userId = document.getElementById('user-id').value;
+
+            logToTerminal(`Compiling payload for User ID: ${userId}...`, 'info');
+            logToTerminal(`Targeting: ${urlInput.substring(0, 30)}...`, 'info');
+
+            const payload = {
+                original_url: urlInput,
+                title: titleInput,
+                user_id: userId
+            };
 
             try {
-                // Call your Flask API
                 const response = await fetch('/shorten', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ original_url: urlToShorten })
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
                 });
 
                 const data = await response.json();
 
                 if (response.ok) {
-                    // Construct the full short URL (e.g., http://localhost:5000/aB3dE)
-                    const fullShortUrl = `${window.location.origin}/${data.short_code}`;
+                    logToTerminal(`Response Code 201: HASH [${data.short_code}] generated.`, 'success');
 
-                    // Update UI
-                    shortLink.href = fullShortUrl;
-                    shortLink.textContent = fullShortUrl;
-                    resultArea.classList.remove('hidden');
-                    input.value = ''; // Clear the input
+                    const fullShortUrl = `${window.location.origin}/${data.short_code}`;
+                    const statsUrl = `${window.location.origin}/stats/${data.short_code}`;
+
+                    document.getElementById('short-link').href = fullShortUrl;
+                    document.getElementById('short-link').innerText = fullShortUrl;
+                    document.getElementById('stats-link').href = statsUrl;
+                    document.getElementById('result-area').classList.remove('hidden');
+                    document.getElementById('original-url').value = '';
+
+                    // Update Table
+                    if (!hasData) {
+                        emptyRow.remove();
+                        hasData = true;
+                    }
+
+                    const row = document.createElement('tr');
+                    row.className = "border-b border-gray-800 hover:bg-gray-900/50 transition";
+                    row.innerHTML = `
+                        <td class="p-4 text-purple-400 font-bold">${data.short_code}</td>
+                        <td class="p-4 text-gray-300 truncate max-w-[200px]" title="${urlInput}">${urlInput}</td>
+                        <td class="p-4 text-gray-500">${titleInput}</td>
+                        <td class="p-4 text-center"><span class="text-[10px] px-2 py-1 bg-green-900/30 text-green-500 border border-green-800 uppercase">Active</span></td>
+                        <td class="p-4 text-right">
+                            <button onclick="copyRowHash(this, '${fullShortUrl}')" class="px-3 py-1 bg-black hover:bg-gray-800 border border-gray-600 text-purple-400 text-[10px] tracking-widest uppercase transition active:scale-95">Copy</button>
+                        </td>
+                    `;
+                    recentBody.prepend(row);
+
                 } else {
-                    // Handle API errors
-                    errorArea.textContent = data.error || "Something went wrong.";
-                    errorArea.classList.remove('hidden');
+                    const errStr = data.error || "Unknown server exception";
+                    logToTerminal(`Exception caught: ${errStr}`, 'error');
+                    document.getElementById('error-text').innerText = errStr;
+                    document.getElementById('error-area').classList.remove('hidden');
                 }
             } catch (err) {
-                errorArea.textContent = "Failed to connect to the server.";
-                errorArea.classList.remove('hidden');
+                logToTerminal(`Network failure. Is the host reachable?`, 'error');
+                document.getElementById('error-text').innerText = "Failed to connect to the server.";
+                document.getElementById('error-area').classList.remove('hidden');
+            } finally {
+                submitBtn.innerText = originalBtnText;
+                submitBtn.disabled = false;
+                logToTerminal(`Awaiting next directive`, 'info');
             }
         });
 
-        // Copy to clipboard functionality
-        copyBtn.addEventListener('click', () => {
-            navigator.clipboard.writeText(shortLink.textContent).then(() => {
-                const originalText = copyBtn.textContent;
-                copyBtn.textContent = 'Copied!';
+        // Main Result Box Copy Button
+        document.getElementById('main-copy-btn').addEventListener('click', (e) => {
+            const linkText = document.getElementById('short-link').innerText;
+            navigator.clipboard.writeText(linkText).then(() => {
+                const btn = e.target;
+                btn.innerText = 'COPIED';
+                btn.classList.add('text-green-400', 'border-green-500');
+                btn.classList.remove('text-gray-300', 'border-gray-600');
+                logToTerminal(`Hash copied to system clipboard.`, 'info');
+
                 setTimeout(() => {
-                    copyBtn.textContent = originalText;
+                    btn.innerText = 'COPY';
+                    btn.classList.remove('text-green-400', 'border-green-500');
+                    btn.classList.add('text-gray-300', 'border-gray-600');
                 }, 2000);
             });
         });

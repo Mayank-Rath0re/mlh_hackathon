@@ -51,6 +51,37 @@ def shorten_url():
 
     return jsonify(model_to_dict(url)), 201
 
+@urls_bp.route("/api/stats/<short_code>", methods=["GET"])
+def get_stats(short_code):
+    try:
+        url = Url.get(Url.short_code == short_code)
+        
+        # Get all events for this URL, ordered by newest first
+        events = Event.select().where(Event.url == url).order_by(Event.timestamp.desc())
+        
+        click_events = []
+        for e in events:
+            if e.event_type == "clicked":
+                # Parse the JSON string stored in the details column
+                details = json.loads(e.details) if e.details else {}
+                click_events.append({
+                    "timestamp": e.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+                    "ip_address": details.get("ip_address", "Unknown"),
+                    "user_agent": details.get("user_agent", "Unknown")
+                })
+        
+        return jsonify({
+            "short_code": url.short_code,
+            "original_url": url.original_url,
+            "title": url.title,
+            "created_at": url.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+            "total_clicks": len(click_events),
+            "recent_clicks": click_events[:15] # Send the last 15 clicks to the UI
+        }), 200
+        
+    except Url.DoesNotExist:
+        return jsonify({"error": "URL not found"}), 404
+
 @urls_bp.route("/<short_code>", methods=["GET"])
 def redirect_url(short_code):
     try:

@@ -45,8 +45,6 @@ jobs:
 
       - name: Run Tests with Coverage
         env:
-          # Use 127.0.0.1 for more reliable local service resolution in Actions
-          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/hackathon_db
-          PYTHONPATH: .  # Fixes the ModuleNotFoundError for 'app'
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/hackathon_db
         run: |
-          uv run pytest --cov=app --cov-fail-under=50 --cov-report=term-missing
+          uv run pytest --cov=app --cov-fail-under=70 --cov-report=term-missing

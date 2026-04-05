@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Link Analytics</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-100 min-h-screen p-8 font-sans">
+
+    <div class="max-w-4xl mx-auto space-y-6">
+        <div class="bg-white p-6 rounded-xl shadow-sm flex justify-between items-center">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-800" id="page-title">Loading Analytics...</h1>
+                <p class="text-sm text-gray-500 mt-1" id="original-url"></p>
+            </div>
+            <div class="text-right">
+                <p class="text-sm font-semibold text-gray-500 uppercase">Total Clicks</p>
+                <p class="text-4xl font-bold text-blue-600" id="total-clicks">-</p>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-100 bg-gray-50">
+                <h2 class="text-lg font-semibold text-gray-700">Recent Click Activity</h2>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm text-left text-gray-500">
+                    <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3">Timestamp</th>
+                            <th class="px-6 py-3">IP Address</th>
+                            <th class="px-6 py-3">User Agent</th>
+                        </tr>
+                    </thead>
+                    <tbody id="events-table-body">
+                    </tbody>
+                </table>
+            </div>
+            <div id="no-data" class="hidden p-8 text-center text-gray-500">
+                No clicks recorded yet. Share your link to get started!
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Extract the short code from the URL (e.g., /stats/ABCDE -> ABCDE)
+        const shortCode = window.location.pathname.split('/').pop();
+
+        async function fetchStats() {
+            try {
+                const response = await fetch(`/api/stats/${shortCode}`);
+                if (!response.ok) throw new Error("Stats not found");
+
+                const data = await response.json();
+
+                // Populate Header
+                document.getElementById('page-title').textContent = data.title;
+                document.getElementById('original-url').innerHTML = `Redirects to: <a href="${data.original_url}" class="text-blue-500 hover:underline" target="_blank">${data.original_url}</a>`;
+                document.getElementById('total-clicks').textContent = data.total_clicks;
+
+                // Populate Table
+                const tbody = document.getElementById('events-table-body');
+                const noData = document.getElementById('no-data');
+
+                if (data.recent_clicks.length === 0) {
+                    noData.classList.remove('hidden');
+                } else {
+                    data.recent_clicks.forEach(click => {
+                        const row = document.createElement('tr');
+                        row.className = "bg-white border-b hover:bg-gray-50";
+                        row.innerHTML = `
+                            <td class="px-6 py-4 whitespace-nowrap font-medium text-gray-900">${click.timestamp}</td>
+                            <td class="px-6 py-4 font-mono text-xs">${click.ip_address}</td>
+                            <td class="px-6 py-4 truncate max-w-xs" title="${click.user_agent}">${click.user_agent}</td>
+                        `;
+                        tbody.appendChild(row);
+                    });
+                }
+            } catch (err) {
+                document.getElementById('page-title').textContent = "Link Not Found";
+                document.getElementById('page-title').classList.add('text-red-500');
+            }
+        }
+
+        fetchStats();
+    </script>
+</body>
+
+</html>
