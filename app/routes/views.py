@@ -10,3 +10,8 @@ def index():
 @views_bp.route("/stats/<short_code>")
 def stats_page(short_code):
     return render_template("stats.html")
+
+@views_bp.route("/health")
+def health_check():
+    # Returns a 200 OK with a JSON payload
+    return jsonify({"status": "ok"}), 200
