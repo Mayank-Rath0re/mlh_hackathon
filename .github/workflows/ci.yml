@@ -1,16 +1,15 @@
-name: CI/CD Pipeline
+name: CI Pipeline
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main" ]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main" ]
 
 jobs:
   test:
     runs-on: ubuntu-latest
     
-    # Setting up a PostgreSQL service container for our tests
     services:
       postgres:
         image: postgres:15
@@ -39,10 +38,15 @@ jobs:
         run: uv python install 3.12
 
       - name: Install Dependencies
-        run: uv sync
+        # Added pytest-cov explicitly just in case it's not in your pyproject.toml
+        run: |
+          uv sync
+          uv add pytest-cov 
 
       - name: Run Tests with Coverage
         env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/hackathon_db
+          # Use 127.0.0.1 for more reliable local service resolution in Actions
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/hackathon_db
+          PYTHONPATH: .  # Fixes the ModuleNotFoundError for 'app'
         run: |
           uv run pytest --cov=app --cov-fail-under=50 --cov-report=term-missing
