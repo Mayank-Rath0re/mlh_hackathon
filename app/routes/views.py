@@ -1,5 +1,4 @@
-from flask import Blueprint, render_template
-
+from flask import Blueprint, render_template, jsonify
 views_bp = Blueprint("views", __name__)
 
 @views_bp.route("/")
